@@ -3,12 +3,12 @@ name: GitHub CI
 
 # run only on main branch.  This avoids duplicated actions on PRs
 on:
-  pull_request:
-  push:
-    tags:
-      - "*"
-    branches:
-      - main
+  # pull_request:
+  # push:
+  #   tags:
+  #     - "*"
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 env:
@@ -17,20 +17,20 @@ env:
   PACKAGE_NAME: 'ansys-tools-filetransfer-server'
 
 jobs:
-  style:
-    name: Pre-commit Check
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          submodules: true
-      - name: Build and run pre-commit hooks via docker
-        run: |
-          docker build -f docker/Dockerfile --target precommit --tag filetransfer-precommit .
-          docker run filetransfer-precommit
-        env:
-          DOCKER_BUILDKIT: '1'
+  # style:
+  #   name: Pre-commit Check
+  #   runs-on: ubuntu-24.04
+  #   timeout-minutes: 60
+  #   steps:
+  #     - uses: actions/checkout@v7.0.1
+  #       with:
+  #         submodules: true
+  #     - name: Build and run pre-commit hooks via docker
+  #       run: |
+  #         docker build -f docker/Dockerfile --target precommit --tag filetransfer-precommit .
+  #         docker run filetransfer-precommit
+  #       env:
+  #         DOCKER_BUILDKIT: '1'
 
   build:
     name: Compile and Test
@@ -71,181 +71,181 @@ jobs:
           ctest --output-on-failure -V
         working-directory: build
 
-  docs:
-    name: Documentation
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          submodules: true
-      - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install dev dependencies
-        run: |
-          uv sync
-      - name: "Install OS packages for docs"
-        run: |
-          sudo apt-get install doxygen
-      - name: Build documentation
-        run: |
-          uv run make -C doc html
-      - name: "Upload HTML Documentation"
-        uses: actions/upload-artifact@v7
-        with:
-          name: documentation-html
-          path: doc/_build/html
-          retention-days: 7
-      - name: "Install OS packages for PDF docs"
-        run: |
-          sudo apt-get install latexmk texlive-latex-extra
-      - name: Generate the PDF documentation
-        run: uv run make -C doc latexpdf
-      - name: "Upload PDF Documentation"
-        uses: actions/upload-artifact@v7
-        with:
-          name: documentation-pdf
-          path: doc/_build/latex/ansys-tools-filetransfer-server.pdf
-          retention-days: 7
+  # docs:
+  #   name: Documentation
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v7.0.1
+  #       with:
+  #         submodules: true
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  #     - name: Install dev dependencies
+  #       run: |
+  #         uv sync
+  #     - name: "Install OS packages for docs"
+  #       run: |
+  #         sudo apt-get install doxygen
+  #     - name: Build documentation
+  #       run: |
+  #         uv run make -C doc html
+  #     - name: "Upload HTML Documentation"
+  #       uses: actions/upload-artifact@v7
+  #       with:
+  #         name: documentation-html
+  #         path: doc/_build/html
+  #         retention-days: 7
+  #     - name: "Install OS packages for PDF docs"
+  #       run: |
+  #         sudo apt-get install latexmk texlive-latex-extra
+  #     - name: Generate the PDF documentation
+  #       run: uv run make -C doc latexpdf
+  #     - name: "Upload PDF Documentation"
+  #       uses: actions/upload-artifact@v7
+  #       with:
+  #         name: documentation-pdf
+  #         path: doc/_build/latex/ansys-tools-filetransfer-server.pdf
+  #         retention-days: 7
 
 
-  docker-build:
-    name: Build and publish Docker container
-    needs: [style, build] # run only for successful build
-    runs-on: ubuntu-22.04
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_OWNER: ansys
-      IMAGE_NAME_BASE: tools-filetransfer
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          submodules: true
+  # docker-build:
+  #   name: Build and publish Docker container
+  #   needs: [style, build] # run only for successful build
+  #   runs-on: ubuntu-22.04
+  #   env:
+  #     REGISTRY: ghcr.io
+  #     IMAGE_OWNER: ansys
+  #     IMAGE_NAME_BASE: tools-filetransfer
+  #   steps:
+  #     - uses: actions/checkout@v7.0.1
+  #       with:
+  #         submodules: true
 
-      - name: Login to ghcr.io
-        uses: docker/login-action@v4.6.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Login to ghcr.io
+  #       uses: docker/login-action@v4.6.0
+  #       with:
+  #         registry: ${{ env.REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set the current date as build date
-        run: |
-          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+  #     - name: Set the current date as build date
+  #       run: |
+  #         echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
-      - name: Verify conditions for building and pushing the image
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            echo "IS_A_RELEASE=true" >> $GITHUB_ENV
-          else
-            echo "IS_A_RELEASE=false" >> $GITHUB_ENV
-          fi
+  #     - name: Verify conditions for building and pushing the image
+  #       run: |
+  #         if [[ $GITHUB_REF == refs/tags/* ]]; then
+  #           echo "IS_A_RELEASE=true" >> $GITHUB_ENV
+  #         else
+  #           echo "IS_A_RELEASE=false" >> $GITHUB_ENV
+  #         fi
 
-      - name: Build image and export to GHCR
-        uses: docker/build-push-action@v7.3.0
-        if: env.IS_A_RELEASE == 'false'
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          push: ${{ github.ref == 'refs/heads/main' }}
-          target: app_minimal
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME_BASE }}:latest
-          build-args: |
-            BUILD_DATE=${{ env.BUILD_DATE }}
-            VCS_REF=${{ github.sha }}
+  #     - name: Build image and export to GHCR
+  #       uses: docker/build-push-action@v7.3.0
+  #       if: env.IS_A_RELEASE == 'false'
+  #       with:
+  #         context: .
+  #         file: ./docker/Dockerfile
+  #         push: ${{ github.ref == 'refs/heads/main' }}
+  #         target: app_minimal
+  #         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME_BASE }}:latest
+  #         build-args: |
+  #           BUILD_DATE=${{ env.BUILD_DATE }}
+  #           VCS_REF=${{ github.sha }}
 
-      - name: Build image and export to GHCR (on release only)
-        if: env.IS_A_RELEASE == 'true'
-        uses: docker/build-push-action@v7.3.0
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          push: true
-          target: app_minimal
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME_BASE }}:${{ github.ref_name }}
-          build-args: |
-            BUILD_DATE=${{ env.BUILD_DATE }}
-            VCS_REF=${{ github.sha }}
+  #     - name: Build image and export to GHCR (on release only)
+  #       if: env.IS_A_RELEASE == 'true'
+  #       uses: docker/build-push-action@v7.3.0
+  #       with:
+  #         context: .
+  #         file: ./docker/Dockerfile
+  #         push: true
+  #         target: app_minimal
+  #         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME_BASE }}:${{ github.ref_name }}
+  #         build-args: |
+  #           BUILD_DATE=${{ env.BUILD_DATE }}
+  #           VCS_REF=${{ github.sha }}
 
-  verify-tag:
-    name: Verify tag name consistency
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+  # verify-tag:
+  #   name: Verify tag name consistency
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v7.0.1
 
-      - name: Verify tag created matches value on VERSION file
-        run: |
-          version=$(cat VERSION)
-          if [[ ${{ github.ref_name }} != "v$version" ]]; then
-            echo "Tag ${{ github.ref_name }} does not match version value in repository: $version"
-            exit 1
-          fi
+  #     - name: Verify tag created matches value on VERSION file
+  #       run: |
+  #         version=$(cat VERSION)
+  #         if [[ ${{ github.ref_name }} != "v$version" ]]; then
+  #           echo "Tag ${{ github.ref_name }} does not match version value in repository: $version"
+  #           exit 1
+  #         fi
 
-  release:
-    name: Release project
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
-    needs: [build, verify-tag]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+  # release:
+  #   name: Release project
+  #   if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+  #   needs: [build, verify-tag]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v7.0.1
 
-      - name: "Download all artifacts that got generated in the CI/CD"
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
+  #     - name: "Download all artifacts that got generated in the CI/CD"
+  #       uses: actions/download-artifact@v8
+  #       with:
+  #         path: dist
 
-      - name: "Display the structure of the 'dist/' folder"
-        shell: bash
-        run: ls -R dist/
+  #     - name: "Display the structure of the 'dist/' folder"
+  #       shell: bash
+  #       run: ls -R dist/
 
-      - name: "Compressing HTML documentation"
-        uses: vimtor/action-zip@5407800dfb2b1b37d48df912330cb22f4ab6f422 # v1.3
-        with:
-          files: dist/documentation/documentation-html
-          dest: dist/documentation/documentation-html.zip
+  #     - name: "Compressing HTML documentation"
+  #       uses: vimtor/action-zip@5407800dfb2b1b37d48df912330cb22f4ab6f422 # v1.3
+  #       with:
+  #         files: dist/documentation/documentation-html
+  #         dest: dist/documentation/documentation-html.zip
 
-      - name: "Compressing PDF documentation"
-        uses: vimtor/action-zip@5407800dfb2b1b37d48df912330cb22f4ab6f422 # v1.3
-        with:
-          files: dist/documentation/documentation-pdf
-          dest: dist/documentation/documentation-pdf.zip
+  #     - name: "Compressing PDF documentation"
+  #       uses: vimtor/action-zip@5407800dfb2b1b37d48df912330cb22f4ab6f422 # v1.3
+  #       with:
+  #         files: dist/documentation/documentation-pdf
+  #         dest: dist/documentation/documentation-pdf.zip
 
-      - name: "Release to GitHub"
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          generate_release_notes: true 
-          files: |
-            dist/documentation/documentation-html.zip
-            dist/documentation/documentation-pdf.zip
+  #     - name: "Release to GitHub"
+  #       uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+  #       with:
+  #         generate_release_notes: true 
+  #         files: |
+  #           dist/documentation/documentation-html.zip
+  #           dist/documentation/documentation-pdf.zip
 
-  upload_docs_dev:
-    name: "Upload dev documentation"
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs: [docs]
-    steps:
-      - name: Deploy the latest documentation
-        uses: ansys/actions/doc-deploy-dev@v11.0.3
-        with:
-          cname: ${{ env.DOCUMENTATION_CNAME }}
-          token: ${{ secrets.PYANSYS_CI_BOT_TOKEN }}
-          bot-user: ${{ secrets.PYANSYS_CI_BOT_USERNAME }}
-          bot-email: ${{ secrets.PYANSYS_CI_BOT_EMAIL }}
+  # upload_docs_dev:
+  #   name: "Upload dev documentation"
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   needs: [docs]
+  #   steps:
+  #     - name: Deploy the latest documentation
+  #       uses: ansys/actions/doc-deploy-dev@v11.0.3
+  #       with:
+  #         cname: ${{ env.DOCUMENTATION_CNAME }}
+  #         token: ${{ secrets.PYANSYS_CI_BOT_TOKEN }}
+  #         bot-user: ${{ secrets.PYANSYS_CI_BOT_USERNAME }}
+  #         bot-email: ${{ secrets.PYANSYS_CI_BOT_EMAIL }}
 
-  upload_docs_release:
-    name: Upload release documentation
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
-    runs-on: ubuntu-latest
-    needs: [docs]
-    steps:
-      - name: Deploy the stable documentation
-        uses: ansys/actions/doc-deploy-stable@v11.0.3
-        with:
-          cname: ${{ env.DOCUMENTATION_CNAME }}
-          token: ${{ secrets.PYANSYS_CI_BOT_TOKEN }}
-          bot-user: ${{ secrets.PYANSYS_CI_BOT_USERNAME }}
-          bot-email: ${{ secrets.PYANSYS_CI_BOT_EMAIL }}
+  # upload_docs_release:
+  #   name: Upload release documentation
+  #   if: github.event_name == 'push' && contains(github.ref, 'refs/tags')
+  #   runs-on: ubuntu-latest
+  #   needs: [docs]
+  #   steps:
+  #     - name: Deploy the stable documentation
+  #       uses: ansys/actions/doc-deploy-stable@v11.0.3
+  #       with:
+  #         cname: ${{ env.DOCUMENTATION_CNAME }}
+  #         token: ${{ secrets.PYANSYS_CI_BOT_TOKEN }}
+  #         bot-user: ${{ secrets.PYANSYS_CI_BOT_USERNAME }}
+  #         bot-email: ${{ secrets.PYANSYS_CI_BOT_EMAIL }}
